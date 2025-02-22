@@ -1,0 +1,51 @@
+version: '3'
+services:
+  mysql_db_container:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: course
+    volumes:
+      - mysql_db_data_container:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  adminer_container:
+    image: adminer:latest
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql_db_container
+
+  nuxt_app_container:
+    container_name: nuxt_app
+    restart: always
+    build: .
+    environment:
+      DATABASE_URL: mysql://root:rootpassword@mysql_db_container:3306/course
+      NUXT_BASE_URL: https://jsonplaceholder.typicode.com
+      JSON_SECRET: aaabbbcccddd
+    command: >
+      /bin/sh -c '
+        echo "Waiting for database..." &&
+        sleep 15 &&
+        npx prisma generate --schema server/database/schema.prisma &&
+        npx prisma migrate deploy --schema server/database/schema.prisma &&
+        npx prisma generate --schema server/database/schema.prisma &&
+        npx prisma db seed &&
+        npm run build &&
+        npm start
+      '
+    depends_on:
+      mysql_db_container:
+        condition: service_healthy
+
+volumes:
+  mysql_db_data_container:
+
+networks:
+  default:
+    name: docker-nuxtvue3_web
+    external: true
