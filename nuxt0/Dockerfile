@@ -18,6 +18,9 @@ RUN npm install
 # 复制所有文件
 COPY . .
 
+# 先构建应用
+RUN npm run build
+
 EXPOSE 3000
 
 CMD ["npm", "start"]
